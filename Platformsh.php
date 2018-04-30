@@ -135,7 +135,6 @@ class Platformsh
 
         if (!file_exists('app/etc/.installed')) {
             $this->installMagento();
-            $this->desiredApplicationMode = self::MAGENTO_DEVELOPER_MODE;
         } else {
             $this->updateMagento();
         }
