@@ -114,6 +114,8 @@ class Platformsh
         $this->log("Compiling generated files.");
 
         $this->execute("php bin/magento setup:di:compile");
+
+        $this->execute("rm -f app/etc/env.php");
     }
 
     /**
@@ -250,7 +252,7 @@ class Platformsh
         }
 
         $this->execute($command);
-        
+
         // Set the flag
         touch('app/etc/.installed');
     }
