@@ -518,17 +518,11 @@ class Platformsh
      */
     protected function processMagentoMode()
     {
-        $desiredApplicationMode = ($this->desiredApplicationMode) ? $this->desiredApplicationMode : self::MAGENTO_PRODUCTION_MODE;
-
-        $this->log("Set Magento application to '$desiredApplicationMode' mode");
-        $this->log("Changing application mode.");
-        $this->execute("cd bin/; /usr/bin/php ./magento deploy:mode:set $desiredApplicationMode --skip-compilation");
-
-        if ($desiredApplicationMode === self::MAGENTO_PRODUCTION_MODE) {
+        if ($this->desiredApplicationMode === self::MAGENTO_PRODUCTION_MODE) {
             $var = $this->getVariables();
 
-            $themesParam = '-t ' . implode('-t ', $var['THEMES']);
-            $localesParam = implode(' ', $var['LOCALES']);
+            $themesParam = "-t " . implode("-t ", $var["THEMES"]);
+            $localesParam = implode(" ", $var["LOCALES"]);
 
             $this->log("Generating static content for locales $localesParam.");
             $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy $themesParam $localesParam");
