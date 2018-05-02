@@ -116,6 +116,8 @@ class Platformsh
         $this->execute("php bin/magento setup:di:compile");
 
         $this->execute("rm -f app/etc/env.php");
+
+        $this->processMagentoMode();
     }
 
     /**
@@ -140,7 +142,7 @@ class Platformsh
         } else {
             $this->updateMagento();
         }
-        $this->processMagentoMode();
+
         $this->disableGoogleAnalytics();
     }
 
@@ -516,23 +518,20 @@ class Platformsh
      */
     protected function processMagentoMode()
     {
-
         $desiredApplicationMode = ($this->desiredApplicationMode) ? $this->desiredApplicationMode : self::MAGENTO_PRODUCTION_MODE;
 
         $this->log("Set Magento application to '$desiredApplicationMode' mode");
         $this->log("Changing application mode.");
         $this->execute("cd bin/; /usr/bin/php ./magento deploy:mode:set $desiredApplicationMode --skip-compilation");
-        if ($desiredApplicationMode == self::MAGENTO_PRODUCTION_MODE) {
-            $locales = '';
-            $output = $this->executeDbQuery("select value from core_config_data where path='general/locale/code';");
-            if (is_array($output) && count($output) > 1) {
-                $locales = $output;
-                array_shift($locales);
-                $locales = implode(' ', $locales);
-            }
-            $logMessage = $locales ? "Generating static content for locales $locales." : "Generating static content.";
-            $this->log($logMessage);
-            $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy $locales");
+
+        if ($desiredApplicationMode === self::MAGENTO_PRODUCTION_MODE) {
+            $var = $this->getVariables();
+
+            $themesParam = '-t ' . implode('-t ', $var['THEMES']);
+            $localesParam = implode(' ', $var['LOCALES']);
+
+            $this->log("Generating static content for locales $localesParam.");
+            $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy $themesParam $localesParam");
         }
     }
 }
