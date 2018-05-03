@@ -16,7 +16,7 @@ class Platformsh
 
     protected $debugMode = false;
 
-    protected $platformReadWriteDirs = ['generated', 'app/etc'];
+    protected $platformReadWriteDirs = ['generated', 'app/etc', 'pub/static'];
 
     protected $urls = ['unsecure' => [], 'secure' => []];
 
@@ -134,6 +134,7 @@ class Platformsh
         foreach ($this->platformReadWriteDirs as $dir) {
             $this->execute(sprintf('mkdir -p %s', $dir));
             $this->execute(sprintf('/bin/bash -c "shopt -s dotglob; cp -R ./init/%s/* %s/ || true"', $dir, $dir));
+            $this->execute(sprintf('rm -rf ./init'));
             $this->log(sprintf('Copied directory: %s', $dir));
         }
 
