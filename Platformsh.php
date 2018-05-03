@@ -104,9 +104,9 @@ class Platformsh
 
         $this->execute("php bin/magento setup:di:compile");
 
-        $this->execute("rm -f app/etc/env.php");
+        $this->generateStaticContent();
 
-        $this->processMagentoMode();
+        $this->execute("rm -f app/etc/env.php");
     }
 
     /**
@@ -150,12 +150,6 @@ class Platformsh
         $this->adminEmail = isset($var["ADMIN_EMAIL"]) ? $var["ADMIN_EMAIL"] : "john@example.com";
         $this->adminPassword = isset($var["ADMIN_PASSWORD"]) ? $var["ADMIN_PASSWORD"] : "admin12";
         $this->adminUrl = isset($var["ADMIN_URL"]) ? $var["ADMIN_URL"] : "admin";
-
-        $this->desiredApplicationMode = isset($var["APPLICATION_MODE"]) ? $var["APPLICATION_MODE"] : false;
-        $this->desiredApplicationMode =
-            in_array($this->desiredApplicationMode, array(self::MAGENTO_DEVELOPER_MODE, self::MAGENTO_PRODUCTION_MODE))
-            ? $this->desiredApplicationMode
-            : false;
 
         $this->redisHost = $relationships['redis'][0]['host'];
         $this->redisScheme = $relationships['redis'][0]['scheme'];
@@ -389,7 +383,7 @@ class Platformsh
 
     protected function log($message)
     {
-        echo sprintf('[%s] %s', date("Y-m-d H:i:s"), $message) . PHP_EOL;
+        echo PHP_EOL . sprintf('[%s] %s', date("Y-m-d H:i:s"), $message) . PHP_EOL;
     }
 
     protected function execute($command)
@@ -497,16 +491,16 @@ class Platformsh
     /**
      * Based on variable APPLICATION_MODE. Production mode by default
      */
-    protected function processMagentoMode()
+    protected function generateStaticContent()
     {
-        if ($this->desiredApplicationMode === self::MAGENTO_PRODUCTION_MODE) {
-            $var = $this->getVariables();
+        $var = $this->getVariables();
 
-            $themesParam = "-t " . implode("-t ", $var["THEMES"]);
+        if ($var["APPLICATION_MODE"] === self::MAGENTO_PRODUCTION_MODE) {
+            $themesParam = "-t " . implode(" -t ", $var["THEMES"]);
             $localesParam = implode(" ", $var["LOCALES"]);
 
             $this->log("Generating static content for locales $localesParam.");
-            $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy $themesParam $localesParam");
+            $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy -f $themesParam $localesParam");
         }
     }
 }
