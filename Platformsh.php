@@ -88,8 +88,6 @@ class Platformsh
     {
         $this->log("Start build.");
 
-        $_ENV['PLATFORM_VARIABLES'] = "eyJUSEVNRVMiOiBbIk1hZ2VudG8vbHVtYSIsICJNYWdlbnRvL2JhY2tlbmQiXSwgIkFQUExJQ0FUSU9OX01PREUiOiAicHJvZHVjdGlvbiIsICJBRE1JTl9QQVNTV09SRCI6ICJtZWQyMjJhIiwgIkFETUlOX1VTRVJOQU1FIjogIm1sZGV2IiwgIkxPQ0FMRVMiOiBbImVuX1VTIl19";
-
         $this->clearTemp();
 
         $this->compile();
@@ -521,7 +519,7 @@ class Platformsh
             $localesParam = implode(" ", $var["LOCALES"]);
 
             $this->log("Generating static content for locales $localesParam.");
-            $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy $themesParam $localesParam");
+            $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy -f $themesParam $localesParam");
         }
     }
 }
