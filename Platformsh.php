@@ -16,8 +16,6 @@ class Platformsh
 
     protected $debugMode = false;
 
-    protected $platformReadWriteDirs = ['generated', 'app/etc'];
-
     protected $urls = ['unsecure' => [], 'secure' => []];
 
     protected $defaultCurrency = 'USD';
@@ -91,15 +89,6 @@ class Platformsh
         $this->clearTemp();
 
         $this->compile();
-
-        $this->log("Copying read/write directories to temp directory.");
-
-        foreach ($this->platformReadWriteDirs as $dir) {
-            $this->execute(sprintf('mkdir -p ./init/%s', $dir));
-            $this->execute(sprintf('/bin/bash -c "shopt -s dotglob; cp -R %s/* ./init/%s/"', $dir, $dir));
-            $this->execute(sprintf('rm -rf %s', $dir));
-            $this->execute(sprintf('mkdir %s', $dir));
-        }
     }
 
     /**
@@ -128,14 +117,6 @@ class Platformsh
         $this->log("Start deploy.");
 
         $this->_init();
-
-        $this->log("Copying read/write directories back.");
-
-        foreach ($this->platformReadWriteDirs as $dir) {
-            $this->execute(sprintf('mkdir -p %s', $dir));
-            $this->execute(sprintf('/bin/bash -c "shopt -s dotglob; cp -R ./init/%s/* %s/ || true"', $dir, $dir));
-            $this->log(sprintf('Copied directory: %s', $dir));
-        }
 
         if (!file_exists('app/etc/.installed')) {
             $this->installMagento();
