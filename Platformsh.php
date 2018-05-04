@@ -467,7 +467,7 @@ class Platformsh
     protected function isMasterBranch()
     {
         if (is_null($this->isMasterBranch)) {
-            if (isset($_ENV["PLATFORM_ENVIRONMENT"]) && $_ENV["PLATFORM_ENVIRONMENT"] == self::GIT_MASTER_BRANCH) {
+            if (isset($_ENV["PLATFORM_BRANCH"]) && $_ENV["PLATFORM_BRANCH"] == self::GIT_MASTER_BRANCH) {
                 $this->isMasterBranch = true;
             } else {
                 $this->isMasterBranch = false;
