@@ -55,7 +55,7 @@ class Platformsh
 
         $routes = $this->getRoutes();
 
-        foreach($routes as $key => $val) {
+        foreach ($routes as $key => $val) {
             if ($val["type"] !== "upstream") {
                 continue;
             }
@@ -63,12 +63,12 @@ class Platformsh
             $urlParts = parse_url($val['original_url']);
             $originalUrl = str_replace(self::MAGIC_ROUTE, '', $urlParts['host']);
 
-            if(strpos($key, self::PREFIX_UNSECURE) === 0) {
+            if (strpos($key, self::PREFIX_UNSECURE) === 0) {
                 $this->urls['unsecure'][$originalUrl] = $key;
                 continue;
             }
 
-            if(strpos($key, self::PREFIX_SECURE) === 0) {
+            if (strpos($key, self::PREFIX_SECURE) === 0) {
                 $this->urls['secure'][$originalUrl] = $key;
                 continue;
             }
@@ -368,8 +368,7 @@ class Platformsh
         $config['db']['connection']['indexer']['dbname'] = $this->dbName;
         $config['db']['connection']['indexer']['password'] = $this->dbPassword;
 
-        if (
-            isset($config['cache']['frontend']['default']['backend']) &&
+        if (isset($config['cache']['frontend']['default']['backend']) &&
             isset($config['cache']['frontend']['default']['backend_options']) &&
             'Cm_Cache_Backend_Redis' == $config['cache']['frontend']['default']['backend']
         ) {
@@ -379,8 +378,7 @@ class Platformsh
             $config['cache']['frontend']['default']['backend_options']['port'] = $this->redisPort;
         }
 
-        if (
-            isset($config['cache']['frontend']['page_cache']['backend']) &&
+        if (isset($config['cache']['frontend']['page_cache']['backend']) &&
             isset($config['cache']['frontend']['page_cache']['backend_options']) &&
             'Cm_Cache_Backend_Redis' == $config['cache']['frontend']['page_cache']['backend']
         ) {
