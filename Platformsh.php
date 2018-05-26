@@ -19,7 +19,7 @@ class Platformsh
 
     protected $debugMode = false;
 
-    protected $platformReadWriteDirs = ['app/etc'];
+    protected $platformReadWriteDirs = ['app/etc', 'generated', 'pub/static'];
 
     protected $urls = ['unsecure' => [], 'secure' => []];
 
