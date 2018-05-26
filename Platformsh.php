@@ -109,6 +109,8 @@ class Platformsh
 
         $this->execute("php bin/magento setup:di:compile");
 
+        $this->execute("rm -f app/etc/env.php");
+
         $this->generateStaticContent();
 
         $this->execute("rm -f app/etc/env.php");
