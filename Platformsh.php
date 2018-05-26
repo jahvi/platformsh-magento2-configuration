@@ -12,7 +12,10 @@ class Platformsh
     const GIT_MASTER_BRANCH = 'master';
 
     const MAGENTO_PRODUCTION_MODE = 'production';
-    const MAGENTO_DEVELOPER_MODE = 'developer';
+
+    const REDIS_SESSION_DATABASE = 0;
+    const REDIS_FULLPAGE_DATABASE = 1;
+    const REDIS_CACHE_DATABASE = 2;
 
     protected $debugMode = false;
 
@@ -37,11 +40,6 @@ class Platformsh
     protected $redisHost;
     protected $redisScheme;
     protected $redisPort;
-
-    protected $solrHost;
-    protected $solrPath;
-    protected $solrPort;
-    protected $solrScheme;
 
     protected $isMasterBranch = null;
     protected $desiredApplicationMode;
@@ -139,6 +137,8 @@ class Platformsh
             $this->updateMagento();
         }
 
+        $this->updateConfiguration();
+
         $this->disableGoogleAnalytics();
     }
 
@@ -158,22 +158,18 @@ class Platformsh
         $this->dbName = $relationships["database"][0]["path"];
         $this->dbUser = $relationships["database"][0]["username"];
         $this->dbPassword = $relationships["database"][0]["password"];
+        $this->dbPrefix = isset($var["DATABASE_PREFIX"]) ? $var["DATABASE_PREFIX"] : "";
 
-        $this->adminUsername = isset($var["ADMIN_USERNAME"]) ? $var["ADMIN_USERNAME"] : "admin";
-        $this->adminFirstname = isset($var["ADMIN_FIRSTNAME"]) ? $var["ADMIN_FIRSTNAME"] : "John";
-        $this->adminLastname = isset($var["ADMIN_LASTNAME"]) ? $var["ADMIN_LASTNAME"] : "Doe";
-        $this->adminEmail = isset($var["ADMIN_EMAIL"]) ? $var["ADMIN_EMAIL"] : "john@example.com";
-        $this->adminPassword = isset($var["ADMIN_PASSWORD"]) ? $var["ADMIN_PASSWORD"] : "admin12";
+        $this->adminUsername = isset($var["ADMIN_USERNAME"]) ? $var["ADMIN_USERNAME"] : "mldev";
+        $this->adminFirstname = isset($var["ADMIN_FIRSTNAME"]) ? $var["ADMIN_FIRSTNAME"] : "ML";
+        $this->adminLastname = isset($var["ADMIN_LASTNAME"]) ? $var["ADMIN_LASTNAME"] : "User";
+        $this->adminEmail = isset($var["ADMIN_EMAIL"]) ? $var["ADMIN_EMAIL"] : "admin@medialounge.co.uk";
+        $this->adminPassword = isset($var["ADMIN_PASSWORD"]) ? $var["ADMIN_PASSWORD"] : "med222a";
         $this->adminUrl = isset($var["ADMIN_URL"]) ? $var["ADMIN_URL"] : "admin";
 
         $this->redisHost = $relationships['redis'][0]['host'];
         $this->redisScheme = $relationships['redis'][0]['scheme'];
         $this->redisPort = $relationships['redis'][0]['port'];
-
-        $this->solrHost = $relationships["solr"][0]["host"];
-        $this->solrPath = $relationships["solr"][0]["path"];
-        $this->solrPort = $relationships["solr"][0]["port"];
-        $this->solrScheme = $relationships["solr"][0]["scheme"];
     }
 
     /**
@@ -203,7 +199,7 @@ class Platformsh
      */
     protected function getVariables()
     {
-        return json_decode(base64_decode($_ENV["PLATFORM_VARIABLES"]), true);
+         return json_decode(base64_decode($_ENV["PLATFORM_VARIABLES"]), true);
     }
 
     /**
@@ -224,9 +220,9 @@ class Platformsh
             --base-url=$urlUnsecure \
             --base-url-secure=$urlSecure \
             --use-rewrites=1 \
-            --use-secure=1 \
-            --use-secure-admin=1 \
-            --language=en_US \
+            --use-secure=0 \
+            --use-secure-admin=0 \
+            --language=en_GB \
             --timezone=America/Los_Angeles \
             --db-host=$this->dbHost \
             --db-name=$this->dbName \
@@ -243,6 +239,11 @@ class Platformsh
             --db-password=$this->dbPassword";
         }
 
+        if (strlen($this->dbPrefix)) {
+            $command .= " \
+            --db-prefix=$this->dbPrefix";
+        }
+
         $this->execute($command);
 
         // Set the flag
@@ -254,42 +255,13 @@ class Platformsh
      */
     protected function updateMagento()
     {
-        $this->log("File env.php exists. Updating configuration.");
-
-        $this->updateConfiguration();
-
-        $this->updateAdminCredentials();
-
-        $this->updateSolrConfiguration();
+        $this->log("Updating configuration.");
 
         $this->updateUrls();
 
         $this->setupUpgrade();
 
         $this->clearCache();
-    }
-
-    /**
-     * Update admin credentials
-     */
-    protected function updateAdminCredentials()
-    {
-        $this->log("Updating admin credentials.");
-
-        $this->executeDbQuery("update admin_user set firstname = '$this->adminFirstname', lastname = '$this->adminLastname', email = '$this->adminEmail', username = '$this->adminUsername', password='{$this->generatePassword($this->adminPassword)}' where user_id = '1';");
-    }
-
-    /**
-     * Update SOLR configuration
-     */
-    protected function updateSolrConfiguration()
-    {
-        $this->log("Updating SOLR configuration.");
-
-        $this->executeDbQuery("update core_config_data set value = '$this->solrHost' where path = 'catalog/search/solr_server_hostname' and scope_id = '0';");
-        $this->executeDbQuery("update core_config_data set value = '$this->solrPort' where path = 'catalog/search/solr_server_port' and scope_id = '0';");
-        $this->executeDbQuery("update core_config_data set value = '$this->solrScheme' where path = 'catalog/search/solr_server_username' and scope_id = '0';");
-        $this->executeDbQuery("update core_config_data set value = '$this->solrPath' where path = 'catalog/search/solr_server_path' and scope_id = '0';");
     }
 
     /**
@@ -303,12 +275,13 @@ class Platformsh
             foreach ($urls as $route => $url) {
                 $prefix = 'unsecure' === $urlType ? self::PREFIX_UNSECURE : self::PREFIX_SECURE;
                 if (!strlen($route)) {
-                    $this->executeDbQuery("update core_config_data set value = '$url' where path = 'web/$urlType/base_url' and scope_id = '0';");
+                    $this->executeDbQuery("update {$this->dbPrefix}core_config_data set value = '$url' where path = 'web/$urlType/base_url' and scope_id = '0';");
                     continue;
                 }
+
                 $likeKey = $prefix . $route . '%';
                 $likeKeyParsed = $prefix . str_replace('.', '---', $route) . '%';
-                $this->executeDbQuery("update core_config_data set value = '$url' where path = 'web/$urlType/base_url' and (value like '$likeKey' or value like '$likeKeyParsed');");
+                $this->executeDbQuery("update {$this->dbPrefix}core_config_data set value = '$url' where path = 'web/$urlType/base_url' and (value like '$likeKey' or value like '$likeKeyParsed');");
             }
         }
     }
@@ -354,9 +327,13 @@ class Platformsh
     {
         $this->log("Updating env.php database configuration.");
 
+        $relationships = $this->getRelationships();
+
         $configFileName = "app/etc/env.php";
 
         $config = include $configFileName;
+
+        $config['MAGE_MODE'] = self::MAGENTO_PRODUCTION_MODE;
 
         $config['db']['connection']['default']['username'] = $this->dbUser;
         $config['db']['connection']['default']['host'] = $this->dbHost;
@@ -368,25 +345,29 @@ class Platformsh
         $config['db']['connection']['indexer']['dbname'] = $this->dbName;
         $config['db']['connection']['indexer']['password'] = $this->dbPassword;
 
-        if (isset($config['cache']['frontend']['default']['backend']) &&
-            isset($config['cache']['frontend']['default']['backend_options']) &&
-            'Cm_Cache_Backend_Redis' == $config['cache']['frontend']['default']['backend']
-        ) {
+        if (!empty($relationships['redis'])) {
             $this->log("Updating env.php Redis cache configuration.");
 
+            $config['cache']['frontend']['default']['backend'] = 'Cm_Cache_Backend_Redis';
             $config['cache']['frontend']['default']['backend_options']['server'] = $this->redisHost;
             $config['cache']['frontend']['default']['backend_options']['port'] = $this->redisPort;
-        }
+            $config['cache']['frontend']['default']['backend_options']['database'] = self::REDIS_CACHE_DATABASE;
 
-        if (isset($config['cache']['frontend']['page_cache']['backend']) &&
-            isset($config['cache']['frontend']['page_cache']['backend_options']) &&
-            'Cm_Cache_Backend_Redis' == $config['cache']['frontend']['page_cache']['backend']
-        ) {
             $this->log("Updating env.php Redis page cache configuration.");
 
+            $config['cache']['frontend']['page_cache']['backend'] = 'Cm_Cache_Backend_Redis';
             $config['cache']['frontend']['page_cache']['backend_options']['server'] = $this->redisHost;
             $config['cache']['frontend']['page_cache']['backend_options']['port'] = $this->redisPort;
+            $config['cache']['frontend']['page_cache']['backend_options']['database'] = self::REDIS_FULLPAGE_DATABASE;
+
+            $this->log("Updating env.php Redis session configuration.");
+
+            $config['session']['save'] = 'redis';
+            $config['session']['redis']['host'] = $this->redisHost;
+            $config['session']['redis']['port'] = $this->redisPort;
+            $config['session']['redis']['database'] = self::REDIS_SESSION_DATABASE;
         }
+
         $config['backend']['frontName'] = $this->adminUrl;
 
         $updatedConfig = '<?php'  . "\n" . 'return ' . var_export($config, true) . ';';
@@ -423,40 +404,6 @@ class Platformsh
         return $output;
     }
 
-
-    /**
-     * Generates admin password using default Magento settings
-     */
-    protected function generatePassword($password)
-    {
-        $saltLenght = 32;
-        $charsLowers = 'abcdefghijklmnopqrstuvwxyz';
-        $charsUppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $charsDigits = '0123456789';
-        $randomStr = '';
-        $chars = $charsLowers . $charsUppers . $charsDigits;
-
-        // use openssl lib
-        for ($i = 0, $lc = strlen($chars) - 1; $i < $saltLenght; $i++) {
-            $bytes = openssl_random_pseudo_bytes(PHP_INT_SIZE);
-            $hex = bin2hex($bytes); // hex() doubles the length of the string
-            $rand = abs(hexdec($hex) % $lc); // random integer from 0 to $lc
-            $randomStr .= $chars[$rand]; // random character in $chars
-        }
-        $salt = $randomStr;
-        $version = 1;
-        $hash = hash('sha256', $salt . $password);
-
-        return implode(
-            ':',
-            [
-                $hash,
-                $salt,
-                $version
-            ]
-        );
-    }
-
     /**
      * If current deploy is about master branch
      *
@@ -485,7 +432,7 @@ class Platformsh
     {
         if (!$this->isMasterBranch()) {
             $this->log("Disabling Google Analytics");
-            $this->executeDbQuery("update core_config_data set value = 0 where path = 'google/analytics/active';");
+            $this->executeDbQuery("update {$this->dbPrefix}core_config_data set value = 0 where path = 'google/analytics/active';");
         }
     }
 
@@ -502,18 +449,16 @@ class Platformsh
     }
 
     /**
-     * Based on variable APPLICATION_MODE. Production mode by default
+     * Generate theme static content
      */
     protected function generateStaticContent()
     {
         $var = $this->getVariables();
 
-        if ($var["APPLICATION_MODE"] === self::MAGENTO_PRODUCTION_MODE) {
-            $themesParam = "-t " . implode(" -t ", $var["THEMES"]);
-            $localesParam = implode(" ", $var["LOCALES"]);
+        $themesParam = "-t " . implode(" -t ", $var["THEMES"]);
+        $localesParam = implode(" ", $var["LOCALES"]);
 
-            $this->log("Generating static content for locales $localesParam.");
-            $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy -f $themesParam $localesParam");
-        }
+        $this->log("Generating static content for locales $localesParam.");
+        $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy -f $themesParam $localesParam");
     }
 }
