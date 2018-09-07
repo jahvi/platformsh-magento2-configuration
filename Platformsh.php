@@ -457,7 +457,7 @@ class Platformsh
     {
         $var = $this->getVariables();
 
-        $themesParam = "-t " . implode(" -t ", $var["THEMES"]);
+        $themesParam = "-t " . implode(" -t ", $var["project:THEMES"]);
         $localesParam = implode(" ", $var["LOCALES"]);
 
         $this->log("Generating static content for locales $localesParam.");
