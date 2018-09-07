@@ -458,7 +458,7 @@ class Platformsh
         $var = $this->getVariables();
 
         $themesParam = "-t " . implode(" -t ", $var["project:THEMES"]);
-        $localesParam = implode(" ", $var["LOCALES"]);
+        $localesParam = implode(" ", $var["project:LOCALES"]);
 
         $this->log("Generating static content for locales $localesParam.");
         $this->execute("cd bin/; /usr/bin/php ./magento setup:static-content:deploy -f $themesParam $localesParam");
